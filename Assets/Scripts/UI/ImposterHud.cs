@@ -134,16 +134,17 @@ public partial class ImposterHud : MonoBehaviour
         beginFromPage = begin;
     }
 
-    RectTransform playButton;       // the start screen's PLAY, until it's pressed
+    RectTransform playButton;       // the start screen's PLAY or the end screen's PLAY AGAIN, until it's pressed
     System.Action beginFromPage;
 
-    // In a web build the page presses PLAY itself when it's clicked over the button: it goes fullscreen and wakes
-    // the sound there, which browsers only allow inside their own click handler. Sent by the ImposterInTown template.
+    // In a web build the page presses PLAY (or PLAY AGAIN) itself when it's clicked over the button: for PLAY it goes
+    // fullscreen and wakes the sound there, which browsers only allow inside their own click handler. Sent by the
+    // ImposterInTown template.
     // Only ever called by name from the page, so code stripping is told to keep it.
     [UnityEngine.Scripting.Preserve]
     public void BeginFromPage() => beginFromPage?.Invoke();
 
-    // Where PLAY is, for the web page: as fractions of the screen from the bottom left, or nowhere once pressed.
+    // Where PLAY or PLAY AGAIN is, for the web page: as fractions of the screen from the bottom left, or nowhere once pressed.
     void TellPagePlayButton()
     {
         var area = new Rect();
@@ -183,11 +184,21 @@ public partial class ImposterHud : MonoBehaviour
         tint.raycastTarget = false;
 
         float width = AddTitle(canvas.transform, title, subtitle);
-        var playAgain = AddButton(canvas.transform, "PLAY AGAIN", width, () =>
+        RectTransform playAgain = null;
+        bool pressed = false;
+        // Pressed in the game, or by the web page (see BeginFromPage): the browser has just let go of the mouse,
+        // and can miss the game's first click after that.
+        System.Action again = () =>
         {
+            if (pressed) return;
+            pressed = true;
+            playButton = null;
             skipStartScreen = true;
             onPlayAgain();
-        });
+        };
+        playAgain = AddButton(canvas.transform, "PLAY AGAIN", width, () => again());
+        playButton = playAgain;
+        beginFromPage = again;
         playAgain.localScale = Vector3.zero;
         StartCoroutine(FadeIn(group));
         StartCoroutine(Pop(playAgain, true, FadeDuration * 0.5f));
@@ -402,6 +413,7 @@ public partial class ImposterHud : MonoBehaviour
             keyText.color = Color.black;
             Stretch(keyText.rectTransform);
             float keyWidth = Mathf.Max(KeyHeight, keyText.preferredWidth + 14f);
+            CenterGlyphs(keyText, new Vector2(keyWidth, KeyHeight)); // in the white of the cap
 
             var label = MakeText(row, action, strongFont, KeyBarTextSize, TextAnchor.MiddleLeft);
             parts.Add((keyRoot, keyWidth, label));
@@ -420,12 +432,33 @@ public partial class ImposterHud : MonoBehaviour
             Place(label.rectTransform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(labelWidth + 2f, KeyHeight));
             label.rectTransform.pivot = new Vector2(0f, 0.5f);
             label.rectTransform.anchoredPosition = new Vector2(x, KeyDrop / 2f);
+            CenterGlyphs(label, new Vector2(labelWidth + 2f, KeyHeight)); // level with the key's letters
             x += labelWidth + itemGap;
         }
         return row.gameObject;
     }
 
     // ---------- Shared helpers ----------
+
+    // Legacy Text centres the whole line (room for ascenders and descenders), so all-caps words sit low in their
+    // box. Moves `text` so its letters themselves are centred in a box of `extents`.
+    static void CenterGlyphs(Text text, Vector2 extents)
+    {
+        var generator = new TextGenerator();
+        generator.Populate(text.text, text.GetGenerationSettings(extents));
+        float min = float.MaxValue, max = float.MinValue;
+        var verts = generator.verts; // four corners per character, relative to the text's pivot
+        for (int i = 0; i + 3 < verts.Count; i += 4)
+        {
+            float bottom = Mathf.Min(verts[i].position.y, verts[i + 2].position.y);
+            float top = Mathf.Max(verts[i].position.y, verts[i + 2].position.y);
+            if (top - bottom < 0.01f) continue; // spaces
+            min = Mathf.Min(min, bottom);
+            max = Mathf.Max(max, top);
+        }
+        if (min > max) return;
+        text.rectTransform.anchoredPosition -= new Vector2(0f, (min + max) / 2f / text.pixelsPerUnit);
+    }
 
     static void EnsureEventSystem()
     {

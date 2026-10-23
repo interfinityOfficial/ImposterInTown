@@ -1,0 +1,13 @@
+// Cloudflare Worker that hosts the web build. Deploy from this folder with: npx wrangler deploy
+// It uploads ../Build.nosync (where Unity's web build goes; kept out of iCloud) and runs worker.js for the compressed game files.
+{
+  "name": "imposter-in-town",
+  "main": "worker.js",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "../Build.nosync",
+    "binding": "ASSETS",
+    // only the game files need the worker; the page and images are served directly
+    "run_worker_first": ["/Build/*"]
+  }
+}

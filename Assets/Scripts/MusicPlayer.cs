@@ -62,9 +62,23 @@ public class MusicPlayer : MonoBehaviour
     public void End() => ended = true;
 
     // Starts the music (PLAY pressed, or straight away on PLAY AGAIN), fading in from silence.
-    public void Begin()
+    // In a web build it waits until the browser's sound is actually running (see WebPage.AudioRunning): browsers
+    // hold sound back until the player's first click, and a start scheduled while it's held back is replayed
+    // wrongly once it lets go (far into the track, then silent). The fade-in covers the moment's wait.
+    public void Begin() => beginRequested = true;
+
+    bool beginRequested;
+
+    bool ReadyToStart()
     {
-        if (started || decks[0, 0] == null) return;
+        if (!beginRequested || ended || decks[0, 0] == null || !WebPage.AudioRunning) return false;
+        for (int s = 0; s < 3; s++)
+            if (decks[0, s].clip.loadState != AudioDataLoadState.Loaded) return false;
+        return true;
+    }
+
+    void StartDecks()
+    {
         double first = AudioSettings.dspTime + ScheduleLead;
         Schedule(0, first);
         current = 0;
@@ -111,7 +125,11 @@ public class MusicPlayer : MonoBehaviour
 
     void Update()
     {
-        if (!started) return;
+        if (!started)
+        {
+            if (ReadyToStart()) StartDecks();
+            return;
+        }
         float dt = Time.unscaledDeltaTime;
 
         // The other deck has just come in on the loop point: this one rings on for a moment and fades.

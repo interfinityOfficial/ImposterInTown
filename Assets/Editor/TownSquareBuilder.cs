@@ -24,7 +24,7 @@ public static class TownSquareBuilder
     const int VillagersPerType = 2;   // every outfit appears twice, so the imposter always has an innocent twin
     // 10 outfits x 2 = 20 villagers.
     static readonly string[] ExcludedVillagers = { CharDir + "/character-male-c.fbx", CharDir + "/character-female-c.fbx" };
-    static readonly Vector3 PlayerStart = new Vector3(0f, 0f, -5.5f);
+    static readonly Vector3 PlayerStart = new Vector3(0f, 0f, -4f); // close enough that the fountain sits near mid-screen
 
     const int PlazaHalf = 9;     // plaza spans -9..9 on X and Z (1 unit = 1 kit tile)
     const int HouseDepth = 2;

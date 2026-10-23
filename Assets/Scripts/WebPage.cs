@@ -1,7 +1,8 @@
 using UnityEngine;
 
 // What the web page around a web build needs to know (Assets/Plugins/WebGL/pageBridge.jslib and the ImposterInTown
-// web template): whether the game wants the mouse captured, and where the PLAY button is. Browsers only allow
+// web template): whether the game wants the mouse captured, and where the PLAY or PLAY AGAIN button is. And one thing the game
+// asks the page: whether the browser's sound is running yet. Browsers only allow
 // capturing the mouse, going fullscreen and starting sound inside the page's own click handler, so the page does
 // those itself. Does nothing outside a web build.
 public static class WebPage
@@ -11,7 +12,23 @@ public static class WebPage
     static extern void ImposterWantsPointerLock(int on);
     [System.Runtime.InteropServices.DllImport("__Internal")]
     static extern void ImposterPlayButton(float x, float y, float width, float height);
+    [System.Runtime.InteropServices.DllImport("__Internal")]
+    static extern int ImposterAudioRunning();
 #endif
+
+    // Browsers hold sound back until the player first clicks; until then sounds are queued, and the queue doesn't
+    // replay scheduled starts correctly (MusicPlayer waits for this). Always true outside a web build.
+    public static bool AudioRunning
+    {
+        get
+        {
+#if UNITY_WEBGL && !UNITY_EDITOR
+            return ImposterAudioRunning() != 0;
+#else
+            return true;
+#endif
+        }
+    }
 
     static bool? toldLock;
     static Rect toldButton;
@@ -25,7 +42,7 @@ public static class WebPage
 #endif
     }
 
-    // As fractions of the screen from the bottom left; an empty rect once there's no PLAY button to press.
+    // As fractions of the screen from the bottom left; an empty rect once there's no button to press.
     public static void PlayButton(Rect area)
     {
         if (area == toldButton) return;

@@ -13,15 +13,16 @@
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <!-- the card shown when the link is shared. Sites like Discord fetch the image from their own servers, so it
        needs the page's full address: set SITE_URL under Player Settings > Resolution and Presentation
-       (e.g. https://example.com/imposter/, with the closing slash) -->
+       (e.g. https://example.com/imposter; a closing slash is optional). The plain tag here is what makes Unity
+       list SITE_URL as a field: site {{{ SITE_URL }}} -->
   <meta property="og:type" content="website">
   <meta property="og:title" content="{{{ PRODUCT_NAME }}}">
   <meta property="og:description" content="Something is wearing the villagers' faces. Find the imposter before midnight.">
-  <meta property="og:image" content="{{{ SITE_URL }}}share.jpg">
+  <meta property="og:image" content="{{{ SITE_URL.replace(/\/+$/, "") }}}/share.jpg?v=2">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta property="og:image:alt" content="Imposter in Town: villagers milling around a fountain in a low-poly town square">
-  <meta property="og:url" content="{{{ SITE_URL }}}">
+  <meta property="og:url" content="{{{ SITE_URL.replace(/\/+$/, "") }}}/">
   <meta name="twitter:card" content="summary_large_image">
   <!-- National Park ExtraBold, the same file the game's HUD uses, for the messages shown on phones or when the game can't start -->
   <link rel="preload" href="NationalPark-ExtraBold.ttf" as="font" type="font/ttf" crossorigin>
@@ -88,14 +89,19 @@
       visibility: hidden;
       transition: width 0.25s ease;
     }
-    /* only shown if the game can't start */
+    /* only shown if the game can't start: the bar goes and the message takes its place, set like #blocked */
     #error {
       display: none;
-      color: rgba(0, 0, 0, 0.6);
-      font: 18px/1.3 "National Park ExtraBold", sans-serif;
+      padding: 24px;
+      color: #211c29;
+      font: 22px/1.25 "National Park ExtraBold", sans-serif;
       letter-spacing: 0.04em;
+      text-align: center;
       text-transform: uppercase;
+      text-wrap: balance;
     }
+    #loading.failed #bar { display: none; }
+    #loading.failed #error { display: block; }
     /* phones and narrow windows: the game needs a keyboard and mouse, so this covers everything */
     #blocked {
       position: fixed;
@@ -190,7 +196,7 @@
 
       let game = null;
       let started = false;
-      //the click is on the start screen's PLAY button (see pageBridge.jslib)
+      //the click is on the start screen's PLAY or the end screen's PLAY AGAIN (see pageBridge.jslib)
       const onPlayButton = (event) => {
         const button = window.imposterPlayButton;
         if (!button) return false;
@@ -210,6 +216,12 @@
           //gossip comes first and needs the cursor, and the game asks for the mouse once it's over
           started = true;
           goFullscreen();
+          game.SendMessage("HUD", "BeginFromPage");
+          return;
+        }
+        //PLAY AGAIN: the browser has just let go of the mouse and can miss the game's first click after that, so the
+        //page presses it too (pressing it twice does nothing)
+        if (started && onPlayButton(event)) {
           game.SendMessage("HUD", "BeginFromPage");
           return;
         }
@@ -246,10 +258,7 @@
           loading.addEventListener("transitionend", () => loading.remove(), { once: true });
         }, 500);
       }).catch((message) => {
-        fill.style.visibility = "visible";
-        fill.style.width = "100%";
-        fill.style.background = "#ff6b6b";
-        document.querySelector("#error").style.display = "block";
+        loading.classList.add("failed");
         console.error(message);
       });
     }

@@ -5,6 +5,11 @@
 /[Bb]uild/
 /[Bb]uilds/
 /[Ll]ogs/
+# Library, Build and Logs are links to *.nosync folders so iCloud Drive skips them (see the folders themselves)
+/[Ll]ibrary
+/[Bb]uild
+/[Ll]ogs
+*.nosync/
 /[Uu]ser[Ss]ettings/
 /[Mm]emoryCaptures/
 /[Rr]ecordings/

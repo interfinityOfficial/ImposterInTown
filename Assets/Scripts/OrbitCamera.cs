@@ -22,6 +22,9 @@ public class OrbitCamera : MonoBehaviour
     public bool mouseLook;
     [Tooltip("Degrees of turn per pixel of mouse movement.")]
     public float lookSensitivity = 0.15f;
+    [Tooltip("Web builds only: browsers report the captured mouse's movement larger than the editor does (in screen "
+           + "pixels at the page's pixel density), so the turn is scaled by this there.")]
+    [Range(0.1f, 1f)] public float webLookScale = 0.5f;
     [Tooltip("Where the target sits on screen, from 0 (bottom edge) to 1 (top edge).")]
     [Range(0.05f, 0.95f)] public float targetScreenY = 0.33f;
 
@@ -29,6 +32,12 @@ public class OrbitCamera : MonoBehaviour
     bool initialized;
     bool cursorFreed;   // Esc pressed: let the cursor go until the next click
     bool wasLocked;
+
+#if UNITY_WEBGL && !UNITY_EDITOR
+    float LookScale => webLookScale;
+#else
+    float LookScale => 1f;
+#endif
 
     void LateUpdate()
     {
@@ -41,7 +50,7 @@ public class OrbitCamera : MonoBehaviour
         bool locked = UpdateCursor();
         // Skip the first frame after locking: the cursor jumping to the centre reads as a big mouse movement.
         if (locked && wasLocked && Mouse.current != null)
-            yaw += Mouse.current.delta.ReadValue().x * lookSensitivity;
+            yaw += Mouse.current.delta.ReadValue().x * lookSensitivity * LookScale;
         wasLocked = locked;
 
         Vector3 goal = FocusPoint();
